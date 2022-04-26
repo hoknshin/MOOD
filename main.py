@@ -232,10 +232,10 @@ if mood_args.score == 'energy' and mood_args.adjusted == 1 :
             index = (mood_args.threshold[i]<complexity) * (complexity<=mood_args.threshold[i+1])
             selected_score[k,i] = np.sum(index)/complexity.shape[0]
     
-    Flops = np.zeros([10])
-    for i in range(10):
+    Flops = np.zeros([len(mood_args.od)])
+    for i in range(len(mood_args.od)):
         Flops[i] = np.sum(selected_score[i,:]*flops)
-    Flops2 = np.ones([10])*flops[-1]
+    Flops2 = np.ones([len(mood_args.od)])*flops[-1]
     import matplotlib.pyplot as plt
     import seaborn as sns
     import pandas
