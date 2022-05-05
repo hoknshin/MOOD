@@ -376,7 +376,8 @@ class MSDNet(nn.Module):
         for i in range(self.nBlocks):
             # print('!!!!! The {}-th block !!!!!'.format(i))
             x = self.blocks[i](x)
-            hidden_feat.append(x)
+            if i == 0:
+                hidden_feat.append(x)
             x[-1] = gradient_rescale(x[-1], 1.0 / (self.nBlocks-i))
             pred, t = self.classifier[i](x)
             x[-1] = gradient_rescale(x[-1], (self.nBlocks-i-1))

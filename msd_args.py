@@ -167,7 +167,7 @@ mood_group = arg_parser.add_argument_group('mood',
                                            'mood setting')
 
 mood_group.add_argument('-ms', '--score', type=str,
-                    default='energy_llf', 
+                    default='energy_llf',   # 'energy_llf'
                     help='basic score for MOOD method, choose from: energy, msp, odin, mahalanobis')
 
 mood_group.add_argument('-mf', '--file', type=str,

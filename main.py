@@ -202,6 +202,13 @@ for o_name in mood_args.od:
                            mean=mean,
                            cal_complexity=False
                            )
+    
+    print('size ' + str(o_complexity.size))
+    print(o_complexity)
+    print('min ' + str(np.min(o_complexity)))
+    print('max ' + str(np.max(o_complexity)))
+    print('mean ' + str(np.mean(o_complexity)))
+    
     auroc_base.append(auroc(i_score[-1], o_score[-1]))
     fpr95_base.append(fpr95(i_score[-1], o_score[-1]))
     auroc_mood.append(auroc(i_adjusted_score, o_adjusted_score))

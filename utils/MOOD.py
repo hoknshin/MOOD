@@ -10,6 +10,9 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 
+import torchvision
+import matplotlib.pyplot as plt
+
 def calculate_complex(batch_data,NM):
     MEAN = NM[0]
     STD = NM[1]
@@ -39,20 +42,54 @@ def energy_score(pres, TF, L, T=1):
         TF[i].append(scores)
     return scores
 
-def llf_score(inputs, pres, model, TF, L, T=1):
+def llf_score(pres, out_features, TF, L, T=1):
+#     print('MOOD llf_score')
     for i in range(L):
         scores  = T*torch.log( torch.sum( torch.exp(pres[i].detach().cpu().type(torch.DoubleTensor) ) / T, dim=1)).numpy()
         TF[i].append(scores)
 
-    out_features = model(inputs)[1]  # hidden features
+#     out_features = model(inputs)[1]  # hidden features
     
+    # Block, Multi network, batch
+    grid_img = torchvision.utils.make_grid(out_features[0][0], nrow=10, normalize=True)
+    grid_img = grid_img.cpu().detach()
+    plt.imshow(grid_img.permute(1, 2, 0))  # H x W x C
+    plt.savefig('hidden_features.png')
+    
+    import sys
+    sys.exit(0)
+        
     llf_complexity_layer = []
-#     for i in range(L):
-    i = 0
-    out_features[i][0] = out_features[i][0].view(out_features[i][0].size(0), -1)
-    out_features[i][0] = torch.mean(out_features[i][0], 1)
-#     llf_complexity_layer.append(out_features[i][0])
-    llf_complexity_layer = out_features[i][0]
+    
+
+    calculation_method_of_complexity_using_low_level_features = 'threshold_and_count'
+    
+    if calculation_method_of_complexity_using_low_level_features == 'gap':
+    #     for i in range(L):
+        # [block][multi-scale in msd]
+        i = 0
+        hidden_features = out_features[i][0].view(out_features[i][0].size(0), -1)
+        del out_features
+        ## cxhxw global average pooling
+        complexity_gap = torch.mean(hidden_features, 1)
+        llf_complexity_layer = complexity_gap
+    
+    elif calculation_method_of_complexity_using_low_level_features == 'threshold_and_count':
+        i = 0
+        hidden_features = out_features[i][0].view(out_features[i][0].size(0), -1)
+        del out_features
+        for idx in range(hidden_features.size(0)):
+    #         print(hidden_features[idx] > 0.25)
+            llf_complexity_layer.append(torch.sum(hidden_features[idx] > 0.15))
+    #         llf_complexity_layer.append(torch.sum(hidden_features[idx] < 0.2))
+    elif calculation_method_of_complexity_using_low_level_features == 'top_channel_threshold_and_count':
+        i = 0
+        hidden_features = out_features[i][0].view(out_features[i][0].size(0), out_features[i][0].size(1), -1)
+        del out_features
+        top_channels = torch.argmax(torch.mean(hidden_features, axis=2), axis=1)
+        for idx in range(hidden_features.size(0)):
+            llf_complexity_layer.append(torch.sum(hidden_features[idx][top_channels[idx]] > 0.20))
+#             llf_complexity_layer.append(torch.mean(hidden_features[idx][top_channels[idx]]))
     
     return scores, llf_complexity_layer
 
@@ -277,12 +314,13 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
             with torch.no_grad():
                 pres, _ = model(images)
             energy_score(pres, score, L)
-        elif score_type == 'energy_llf':
+        elif score_type == 'energy_llf':            
+#             print('MOOD energy_llf')
             with torch.no_grad():
-                pres, _ = model(images)
+                pres, hidden_features = model(images)
             model.eval()
-            _, llf_complexity = llf_score(images, pres, model, score, L)
-            llf_complexity_list.append(llf_complexity)
+            _, llf_complexity = llf_score(pres, hidden_features, score, L)
+            llf_complexity_list += llf_complexity
         elif score_type == 'msp':
             with torch.no_grad():
                 pres, _ = model(images)
@@ -298,7 +336,7 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
         
     score = [np.concatenate(x) for x in score]
     
-    llf_complexity_array = np.array(llf_complexity_list)
+    llf_complexity_array = np.array(llf_complexity_list, dtype=np.float32)
 #     print('llf_complexity_array size: ' + str(llf_complexity_array.size))
 #     print('mean ' + str(np.mean(llf_complexity_array)))
 #     print('min ' + str(np.min(llf_complexity_array)))
@@ -317,6 +355,7 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
     else:
         print('Adjusted_score wrong! It can only be 0 or 1!')
 #     return score, adjusted_score, complexity
+#     print(llf_complexity_array)
     return score, adjusted_score, llf_complexity_array
 
 
