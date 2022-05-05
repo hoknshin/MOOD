@@ -99,7 +99,7 @@ if 1:#load and test model
     
     model.eval()
 
-if 1:
+if 0:
     from utils.msdnet_function import validate
     val_loss, val_err1, val_err5 = validate(test_loader, model, criterion)
 
@@ -165,7 +165,7 @@ i_score, i_adjusted_score, i_complexity = get_ood_score(data_name=mood_args.id,
                            NM=NM,
                            adjusted_mode=0,   
                            mean=None,
-                           cal_complexity=True
+                           cal_complexity=False
                            )
 mean=[]
 for i in range(mood_args.layer):
@@ -180,7 +180,7 @@ i_score, i_adjusted_score, i_complexity = get_ood_score(data_name=mood_args.id,
                            NM=NM,
                            adjusted_mode=mood_args.adjusted,
                            mean=mean,
-                           cal_complexity=True
+                           cal_complexity=False
                            )
 auroc_base = []
 fpr95_base = []
@@ -200,7 +200,7 @@ for o_name in mood_args.od:
                            NM=NM,
                            adjusted_mode=mood_args.adjusted,
                            mean=mean,
-                           cal_complexity=True
+                           cal_complexity=False
                            )
     auroc_base.append(auroc(i_score[-1], o_score[-1]))
     fpr95_base.append(fpr95(i_score[-1], o_score[-1]))

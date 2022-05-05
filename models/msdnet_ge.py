@@ -372,15 +372,18 @@ class MSDNet(nn.Module):
     def forward(self, x):
         res = []
         feat = []
+        hidden_feat = []
         for i in range(self.nBlocks):
             # print('!!!!! The {}-th block !!!!!'.format(i))
             x = self.blocks[i](x)
+            hidden_feat.append(x)
             x[-1] = gradient_rescale(x[-1], 1.0 / (self.nBlocks-i))
             pred, t = self.classifier[i](x)
             x[-1] = gradient_rescale(x[-1], (self.nBlocks-i-1))
             res.append(pred)
             feat.append(t)
-        return res, feat
+#         return res, feat
+        return res, hidden_feat
 
 class WrappedModel(nn.Module):
     def __init__(self, module):

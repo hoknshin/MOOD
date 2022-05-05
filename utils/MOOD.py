@@ -39,6 +39,23 @@ def energy_score(pres, TF, L, T=1):
         TF[i].append(scores)
     return scores
 
+def llf_score(inputs, pres, model, TF, L, T=1):
+    for i in range(L):
+        scores  = T*torch.log( torch.sum( torch.exp(pres[i].detach().cpu().type(torch.DoubleTensor) ) / T, dim=1)).numpy()
+        TF[i].append(scores)
+
+    out_features = model(inputs)[1]  # hidden features
+    
+    llf_complexity_layer = []
+#     for i in range(L):
+    i = 0
+    out_features[i][0] = out_features[i][0].view(out_features[i][0].size(0), -1)
+    out_features[i][0] = torch.mean(out_features[i][0], 1)
+#     llf_complexity_layer.append(out_features[i][0])
+    llf_complexity_layer = out_features[i][0]
+    
+    return scores, llf_complexity_layer
+
 def odin_score(inputs, TF, model, L, temper=1000, noiseMagnitude=0.001):
     for i in range(L):
         criterion = nn.CrossEntropyLoss()
@@ -241,6 +258,7 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
                   adjusted_mode=0, mean=None, cal_complexity=True):
     
     score=[]
+    llf_complexity_list = []
     if cal_complexity==True:
         complexity=[]
   
@@ -259,6 +277,12 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
             with torch.no_grad():
                 pres, _ = model(images)
             energy_score(pres, score, L)
+        elif score_type == 'energy_llf':
+            with torch.no_grad():
+                pres, _ = model(images)
+            model.eval()
+            _, llf_complexity = llf_score(images, pres, model, score, L)
+            llf_complexity_list.append(llf_complexity)
         elif score_type == 'msp':
             with torch.no_grad():
                 pres, _ = model(images)
@@ -274,6 +298,12 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
         
     score = [np.concatenate(x) for x in score]
     
+    llf_complexity_array = np.array(llf_complexity_list)
+#     print('llf_complexity_array size: ' + str(llf_complexity_array.size))
+#     print('mean ' + str(np.mean(llf_complexity_array)))
+#     print('min ' + str(np.min(llf_complexity_array)))
+#     print('max ' + str(np.max(llf_complexity_array)))
+    
     if cal_complexity==True:
         complexity = np.concatenate(complexity)
         np.save('complexity/'+data_name+'.npy',complexity)
@@ -286,7 +316,8 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
         adjusted_score = cut_transfer(L, threshold, score, complexity, [0,0,0,0,0])
     else:
         print('Adjusted_score wrong! It can only be 0 or 1!')
-    return score, adjusted_score, complexity
+#     return score, adjusted_score, complexity
+    return score, adjusted_score, llf_complexity_array
 
 
 from sklearn.metrics import average_precision_score,roc_auc_score,roc_curve
