@@ -42,6 +42,8 @@ def energy_score(pres, TF, L, T=1):
         TF[i].append(scores)
     return scores
 
+idx_save_image = 0
+
 def llf_score(pres, out_features, TF, L, T=1):
 #     print('MOOD llf_score')
     for i in range(L):
@@ -51,13 +53,17 @@ def llf_score(pres, out_features, TF, L, T=1):
 #     out_features = model(inputs)[1]  # hidden features
     
     # Block, Multi network, batch
-    grid_img = torchvision.utils.make_grid(out_features[0][0], nrow=10, normalize=True)
-    grid_img = grid_img.cpu().detach()
-    plt.imshow(grid_img.permute(1, 2, 0))  # H x W x C
-    plt.savefig('hidden_features.png')
+    global idx_save_image
+    idx_save_image += 1
+    if idx_save_image % 20 == 0:  # batch
+        grid_img = torchvision.utils.make_grid(out_features[0][0][0].unsqueeze(1).expand(-1, 3, -1, -1), nrow=10, normalize=False)
+        grid_img = grid_img.cpu().detach()
+#         plt.imshow(grid_img.permute(1, 2, 0))  # H x W x C
+        # CHW
+        torchvision.utils.save_image(grid_img, 'data/hidden_features_' + str(idx_save_image) + '.png')
     
-    import sys
-    sys.exit(0)
+#     import sys
+#     sys.exit(0)
         
     llf_complexity_layer = []
     
