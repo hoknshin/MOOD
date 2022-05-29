@@ -13,6 +13,9 @@ import torch.nn.functional as F
 import torchvision
 import matplotlib.pyplot as plt
 
+import datetime
+
+
 def calculate_complex(batch_data,NM):
     MEAN = NM[0]
     STD = NM[1]
@@ -53,21 +56,14 @@ def llf_score(pres, out_features, TF, L, T=1):
 #     out_features = model(inputs)[1]  # hidden features
     
     # Block, Multi network, batch
-    global idx_save_image
-    idx_save_image += 1
-    if idx_save_image % 20 == 0:  # batch
-        grid_img = torchvision.utils.make_grid(out_features[0][0][0].unsqueeze(1).expand(-1, 3, -1, -1), nrow=10, normalize=False)
-        grid_img = grid_img.cpu().detach()
-#         plt.imshow(grid_img.permute(1, 2, 0))  # H x W x C
-        # CHW
-        torchvision.utils.save_image(grid_img, 'data/hidden_features_' + str(idx_save_image) + '.png')
-    
-#     import sys
-#     sys.exit(0)
-        
+#     global idx_save_image
+#     idx_save_image += 1
+#     if idx_save_image % 20 == 0:  # batch
+#         grid_img = torchvision.utils.make_grid(out_features[0][0][0].unsqueeze(1).expand(-1, 3, -1, -1), nrow=10, normalize=False)
+#         grid_img = grid_img.cpu().detach()
+#         plt.imshow(grid_img.permute(1, 2, 0))  # H x W x C        
+       
     llf_complexity_layer = []
-    
-
     calculation_method_of_complexity_using_low_level_features = 'threshold_and_count'
     
     if calculation_method_of_complexity_using_low_level_features == 'gap':
@@ -81,12 +77,14 @@ def llf_score(pres, out_features, TF, L, T=1):
         llf_complexity_layer = complexity_gap
     
     elif calculation_method_of_complexity_using_low_level_features == 'threshold_and_count':
-        i = 0
-        hidden_features = out_features[i][0].view(out_features[i][0].size(0), -1)
+        i = 0  # block
+        j = 0  # multi network in msdnet, 0: 32x32 56ch, 2: 8x8
+        hidden_features = out_features[i][j].view(out_features[i][j].size(0), -1)
         del out_features
         for idx in range(hidden_features.size(0)):
     #         print(hidden_features[idx] > 0.25)
             llf_complexity_layer.append(torch.sum(hidden_features[idx] > 0.15))
+#             llf_complexity_layer.append(torch.sum(hidden_features[idx] > 2.0))  # max 3.5
     #         llf_complexity_layer.append(torch.sum(hidden_features[idx] < 0.2))
     elif calculation_method_of_complexity_using_low_level_features == 'top_channel_threshold_and_count':
         i = 0
@@ -96,6 +94,10 @@ def llf_score(pres, out_features, TF, L, T=1):
         for idx in range(hidden_features.size(0)):
             llf_complexity_layer.append(torch.sum(hidden_features[idx][top_channels[idx]] > 0.20))
 #             llf_complexity_layer.append(torch.mean(hidden_features[idx][top_channels[idx]]))
+    
+    # CHW
+#     if idx_save_image % 20 == 0:
+#         torchvision.utils.save_image(grid_img, 'data/hidden_features_%05d_c%4d.png' % (idx_save_image, llf_complexity_layer[0]))    
     
     return scores, llf_complexity_layer
 
@@ -292,6 +294,9 @@ def cut_transfer(L, threshold, energy, complexity, mean):
     cut_score = []
     for i in range(L):
         index = (threshold[i]<complexity) * (complexity<=threshold[i+1])
+#         print(complexity)
+#         print(threshold)
+#         print(index)
         index = index.reshape([-1])
         cut_score.append(energy[i][index]-mean[i])
     cut_score = np.concatenate(cut_score)
@@ -309,10 +314,18 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
         score.append([])
         
     num=0
+    cal_complexity_duration = []
+    cal_inference_duration = []
     for images, labels in dataloader:
 
         if cal_complexity==True:
             complexity.append(calculate_complex(images,NM))
+        
+#         start = datetime.datetime.now()
+#         calculate_complex(images,NM)
+#         end = datetime.datetime.now()
+#         print('duration (for batch 64): ' + (end-start).strftime("%f"))
+#         cal_complexity_duration.append(int((end-start).microseconds))
 
         images = images.cuda()
 
@@ -323,7 +336,10 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
         elif score_type == 'energy_llf':            
 #             print('MOOD energy_llf')
             with torch.no_grad():
+                start = datetime.datetime.now()
                 pres, hidden_features = model(images)
+                end = datetime.datetime.now()
+                cal_inference_duration.append(int((end-start).microseconds))
             model.eval()
             _, llf_complexity = llf_score(pres, hidden_features, score, L)
             llf_complexity_list += llf_complexity
@@ -340,6 +356,12 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
 
         num+=images.shape[0]
         
+#     cal_complexity_duration_array = np.array(cal_complexity_duration, dtype=np.float32)
+#     print('average duration for cal complexity: ' + str(np.mean(cal_complexity_duration_array) / 64.))  # batch size
+    
+#     cal_inference_duration_array = np.array(cal_inference_duration, dtype=np.float32)
+#     print('average duration: for inference: ' + str(np.mean(cal_inference_duration_array) / 64.))  # batch size
+    
     score = [np.concatenate(x) for x in score]
     
     llf_complexity_array = np.array(llf_complexity_list, dtype=np.float32)
@@ -355,9 +377,12 @@ def get_ood_score(data_name, model, L, dataloader, score_type, threshold, NM,
         complexity=np.load('complexity/'+data_name+'.npy')
     
     if adjusted_mode==1:
-        adjusted_score = cut_transfer(L, threshold, score, complexity, mean)
+#         adjusted_score = cut_transfer(L, threshold, score, complexity, mean)
+        adjusted_score = cut_transfer(L, threshold, score, llf_complexity_array, mean)
+        
     elif adjusted_mode==0:
-        adjusted_score = cut_transfer(L, threshold, score, complexity, [0,0,0,0,0])
+#         adjusted_score = cut_transfer(L, threshold, score, complexity, [0,0,0,0,0])
+        adjusted_score = cut_transfer(L, threshold, score, llf_complexity_array, [0,0,0,0,0])
     else:
         print('Adjusted_score wrong! It can only be 0 or 1!')
 #     return score, adjusted_score, complexity

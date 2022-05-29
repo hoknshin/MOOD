@@ -183,14 +183,14 @@ mood_group.add_argument('-mi', '--id', type=str,
 mood_group.add_argument('-mo', '--od', type=list, 
                     default=[
                              'mnist',
-#                              'kmnist',
-#                              'fasionmnist',
-#                              'lsun',
-#                              'svhn',
+                             'kmnist',
+                             'fasionmnist',
+                             'lsun',
+                             'svhn',
                              'dtd',
-#                              'stl10',
-#                              'place365',
-#                              'isun',
+#                              'stl10',  # not used
+                             'place365',
+                             'isun',
                              'lsunR'
                              ],
                     help='all 10 OOD datasets used in experiment')
@@ -198,17 +198,29 @@ mood_group.add_argument('-mo', '--od', type=list,
 mood_group.add_argument('-mc', '--compressor', type=str, 
                     default='png',
                     help='compressor for complexity')
+
+# 2100 ~ 4100
+# 0~2500
+# ~2900
+# ~3300
+# ~3700
+
 mood_group.add_argument('-mt', '--threshold', type=int, 
                     default=[0, 
-                             1*2700/5, 
-                             2*2700/5,
-                             3*2700/5,
-                             4*2700/5,
-                             9999],
+                             2500, 
+                             2900,
+                             3300,
+                             3700,
+                            99999],
+#                              1*2700/5, 
+#                              2*2700/5,
+#                              3*2700/5,
+#                              4*2700/5,                             
+#                              9999],
                     
                     help='the complex thresholds for different exits in MSDNet')
 mood_group.add_argument('-ma', '--adjusted', type=int, 
-                    default=1,
+                    default=1,   # 1
                     help='adjusted energy score: mode 1: minus mean; mode 0: keep as original')
 
 mood_group.add_argument('-mb', '--bs', type=int, 
