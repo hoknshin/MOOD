@@ -56,8 +56,8 @@ def llf_score(pres, out_features, TF, L, T=1):
 #     out_features = model(inputs)[1]  # hidden features
     
     # Block, Multi network, batch
-#     global idx_save_image
-#     idx_save_image += 1
+    global idx_save_image
+    idx_save_image += 1
 #     if idx_save_image % 20 == 0:  # batch
 #         grid_img = torchvision.utils.make_grid(out_features[0][0][0].unsqueeze(1).expand(-1, 3, -1, -1), nrow=10, normalize=False)
 #         grid_img = grid_img.cpu().detach()
@@ -293,7 +293,8 @@ def mahalanobis_score(inputs, TF, model, L):
 def cut_transfer(L, threshold, energy, complexity, mean):
     cut_score = []
     for i in range(L):
-        index = (threshold[i]<complexity) * (complexity<=threshold[i+1])
+#         index = (threshold[i]<complexity) * (complexity<=threshold[i+1])
+        index = (threshold[L-i-1]<complexity) * (complexity<=threshold[L-i]) # for reverse complexity
 #         print(complexity)
 #         print(threshold)
 #         print(index)

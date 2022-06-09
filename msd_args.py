@@ -188,7 +188,7 @@ mood_group.add_argument('-mo', '--od', type=list,
                              'lsun',
                              'svhn',
                              'dtd',
-#                              'stl10',  # not used
+                             'stl10',  # not used
                              'place365',
                              'isun',
                              'lsunR'
@@ -206,11 +206,25 @@ mood_group.add_argument('-mc', '--compressor', type=str,
 # ~3700
 
 mood_group.add_argument('-mt', '--threshold', type=int, 
-                    default=[0, 
-                             2500, 
-                             2900,
-                             3300,
-                             3700,
+                    default=[0,
+                             
+                             # 8x8 network
+#                              2500, 
+#                              2900,
+#                              3300,
+#                              3700,
+                             
+                             # 32x32 network
+#                              28000,
+#                              30600,
+#                              33200,
+#                              36000,
+                             
+                             20000, #28000,  # 20000
+                             31600,
+                             33200,
+                             36000,                             
+                             
                             99999],
 #                              1*2700/5, 
 #                              2*2700/5,
